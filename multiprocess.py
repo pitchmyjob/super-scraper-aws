@@ -14,8 +14,8 @@ def log_result(result):
     result_list.append(result)
 
 def apply_async_with_callback():
-    pool = mp.Pool(processes=4)
-    for i in range(1000):
+    pool = mp.Pool(processes=10)
+    for i in range(100):
         pool.apply_async(foo_pool, args = (i, ), callback = log_result)
     pool.close()
     pool.join()
