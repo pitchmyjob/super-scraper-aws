@@ -20,17 +20,15 @@ kinesis = boto3.client('kinesis', region_name='us-west-2')
 re = tor_request()
 
 
-print("gooo")
-for message in queue.receive_messages(MaxNumberOfMessages=10):
-    print ("----------------")
-    start = time.time()
+print re.get("http://ipinfo.io/ip")
 
+for message in queue.receive_messages(MaxNumberOfMessages=10):
+    start = time.time()
     url = message.body  
     html = re.get(url)
     key = hashlib.md5(url).hexdigest()
     print url
     message.delete()
     ViadeoScrapper(html, url)
-    print (" ------- : %s" % (time.time() - start) )
 
 

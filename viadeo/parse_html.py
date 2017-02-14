@@ -18,7 +18,6 @@ class ViadeoScrapper(object):
     kinesis_batch=None
 
     def __init__(self, html, url):
-        start = time.time()
         self.bs = BeautifulSoup(html, 'html.parser')
         self.url = url
         self.md5 = hashlib.md5(self.url).hexdigest()
@@ -36,8 +35,6 @@ class ViadeoScrapper(object):
 
         self.push_urls_to_dynamomdb()
         self.push_to_kinesis()
-
-        print "ending parse : %s sec" % (time.time() - start)
 
 
 

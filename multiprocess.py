@@ -3,7 +3,6 @@ import time
 import os
 
 def foo_pool(x):
-    time.sleep(2)
     os.system('python scrap.py')
 
     return x*x

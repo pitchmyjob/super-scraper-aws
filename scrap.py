@@ -35,8 +35,8 @@ while get_number_message() > 1 :
             }
             kinesis.put_record(StreamName="receive-html", Data=json.dumps(datas), PartitionKey=str(key))
 
-
             message.delete()
+            print("Sucess")
         except Exception as e:
             print("> error : {}".format(str(e)))
             time.sleep(5)
