@@ -2,6 +2,7 @@ import boto3
 from _tor import tor_request
 import hashlib
 import json
+import time
 
 
 def get_number_message():
@@ -23,14 +24,19 @@ while get_number_message() > 1 :
     for message in queue.receive_messages(MaxNumberOfMessages=10):
         url = message.body
         print url
-        html = re.get(url)
-        key = hashlib.md5(url).hexdigest()
 
-        datas = {
-            "url" : url,
-            "html" : html
-        }
-        kinesis.put_record(StreamName="receive-html", Data=json.dumps(datas), PartitionKey=str(key))
+        try:
+            html = re.get(url)
+            key = hashlib.md5(url).hexdigest()
+
+            datas = {
+                "url" : url,
+                "html" : html
+            }
+            kinesis.put_record(StreamName="receive-html", Data=json.dumps(datas), PartitionKey=str(key))
 
 
-        message.delete()
+            message.delete()
+        except Exception as e:
+            print("> error : {}".format(str(e)))
+            time.sleep(5)
