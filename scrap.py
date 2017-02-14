@@ -19,7 +19,7 @@ re = tor_request()
 
 
 while get_number_message() > 1 :
-    print re.get("http://ipinfo.io/ip")
+    #print re.get("http://ipinfo.io/ip")
 
     for message in queue.receive_messages(MaxNumberOfMessages=10):
         url = message.body
