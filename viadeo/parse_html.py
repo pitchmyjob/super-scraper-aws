@@ -14,9 +14,11 @@ class ViadeoScrapper(object):
     bs = None
     md5 = None
     url = None
+    start = None
+    kinesis_batch=None
 
     def __init__(self, html, url):
-
+        start = time.time()
         self.bs = BeautifulSoup(html, 'html.parser')
         self.url = url
         self.md5 = hashlib.md5(self.url).hexdigest()
@@ -25,8 +27,8 @@ class ViadeoScrapper(object):
         self.parse_jobs()
         self.parse_educations()
         self.parse_skills()
-
         self.get_lang()
+
 
         self.data['user']['url'] = self.url
         self.data['user']['md5'] = self.md5
@@ -34,6 +36,9 @@ class ViadeoScrapper(object):
 
         self.push_urls_to_dynamomdb()
         self.push_to_kinesis()
+
+        print "ending parse : %s sec" % (time.time() - start)
+
 
 
     def get_lang(self):
@@ -43,23 +48,29 @@ class ViadeoScrapper(object):
 
     def push_to_kinesis(self):
         topush = []
-        kinesis = boto3.client('kinesis', region_name='us-west-2')
-        kinesis.put_record(StreamName="receive-data-to-parse", Data=json.dumps(self.data), PartitionKey=str(self.md5))
+        self.kinesis_batch = {
+            'Data' : json.dumps(self.data),
+            'PartitionKey' : str(self.md5)
+        }
+        #kinesis = boto3.client('kinesis', region_name='us-west-2')
+        #kinesis.put_record(StreamName="receive-data-to-parse", Data=json.dumps(self.data), PartitionKey=str(self.md5))
 
 
     def push_urls_to_dynamomdb(self):
         bs_browse_map = self.bs.find('ul', id='alsoVisitedTarget')
         if bs_browse_map:
+            batch_item = []
             client = boto3.resource('dynamodb', region_name='us-west-2')
             table = client.Table('url-to-handle')
-            for bs_profile_card in bs_browse_map.find_all('li', class_='contact'):
-                url = self.transform_url(bs_profile_card.find('a').get('href'))
 
-                table.put_item(
-                    Item={
-                            "md5" : hashlib.md5(url).hexdigest(),
-                            "url" : url
-                        }
+            with table.batch_writer() as batch:
+                for bs_profile_card in bs_browse_map.find_all('li', class_='contact'):
+                    url = self.transform_url(bs_profile_card.find('a').get('href'))
+                    batch.put_item(
+                        Item={
+                                "md5" : hashlib.md5(url).hexdigest(),
+                                "url" : url
+                            }
                     )
                 
     def transform_url(self, url):
@@ -175,7 +186,15 @@ class ViadeoScrapper(object):
 
 
 def lambda_handler(event, context):
+    batch=[]
+    kinesis = boto3.client('kinesis', region_name='us-west-2')
+
     for record in event['Records']:
         payload=base64.b64decode(record["kinesis"]["data"])
         data = json.loads(payload)
-        ViadeoScrapper(data['html'], data['url'])
+        v = ViadeoScrapper(data['html'], data['url'])
+        batch.append(v.kinesis_batch)
+
+    kinesis.put_records(StreamName="receive-data-to-parse", Records=batch)
+
+    print('-- Processed %s records' % str(len(event['Records'])))
